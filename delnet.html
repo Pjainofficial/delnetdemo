@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Library Knowledge Portal (DELNET-style Demo)</title>
+  <!-- Supabase JS CDN -->
+
+
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+    }
+    .login {
+      display: flex;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #ffffff;
+      padding: 24px;
+      width: 340px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .card h2 { margin-top: 0; }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .layout {
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 260px;
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    .topic {
+      padding: 8px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+    .topic:hover {
+      background: #f1f5f9;
+    }
+    .content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    .item {
+      background: #ffffff;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid #e5e7eb;
+    }
+    .item:hover {
+      background: #f9fafb;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .muted { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    /***********************************************************
+     * 1. CONFIGURE SUPABASE (PASTE YOUR OWN VALUES IN VS CODE)
+     ***********************************************************/
+    const SUPABASE_URL = "https://jkdlpfuiwmfeigzynmzg.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprZGxwZnVpd21mZWlnenlubXpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NzY4NDksImV4cCI6MjA5NDE1Mjg0OX0.5Yd7CaDPuurtFI8KIbxnswJ6Zf2KiV1w33wBTVUECl4";
+
+
+    // const supabase = window.supabase.createClient(
+    //   SUPABASE_URL,
+    //   SUPABASE_ANON_KEY
+    // );
+
+    
+const supabase = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+
+
+    const app = document.getElementById("app");
+
+
+    /***********************************************************
+     * 2. LOGIN UI
+     ***********************************************************/
+    function showLogin() {
+      app.innerHTML = `
+        <div class="login">
+          <div class="card">
+            <h2>Library Portal Login</h2>
+            <p class="muted">Access for registered users</p>
+            <input id="email" type="email" placeholder="Email" />
+            <input id="password" type="password" placeholder="Password" />
+            <button onclick="login()">Login</button>
+          </div>
+        </div>
+      `;
+    }
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) {
+        alert(error.message);
+      } else {
+        loadPortal();
+      }
+    }
+
+    /***********************************************************
+     * 3. MAIN PORTAL LAYOUT
+     ***********************************************************/
+    async function loadPortal() {
+      app.innerHTML = `
+        <div class="layout">
+          <div class="sidebar">
+            <h3>Topics</h3>
+            <div id="topics"></div>
+            <hr />
+            <button class="secondary" onclick="logout()">Logout</button>
+          </div>
+          <div class="content">
+            <div id="content">
+              <h2>Select a topic from the left</h2>
+              <p class="muted">DELNET-style hierarchical navigation</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+
+      const { data, error } = await supabase
+        .from("topics")
+        .select("*")
+        .order("name");
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const topicsDiv = document.getElementById("topics");
+      topicsDiv.innerHTML = "";
+
+      data.forEach(topic => {
+        const div = document.createElement("div");
+        div.className = "topic";
+        div.innerText = topic.name;
+        div.onclick = () => loadSubjects(topic.id, topic.name);
+        topicsDiv.appendChild(div);
+      });
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      showLogin();
+    }
+
+    /***********************************************************
+     * 4. SUBJECTS (LEVEL 2)
+     ***********************************************************/
+    async function loadSubjects(topicId, topicName) {
+      const { data, error } = await supabase
+        .from("subjects")
+        .select("*")
+        .eq("topic_id", topicId)
+        .order("name");
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const content = document.getElementById("content");
+      content.innerHTML = `
+        <div class="topbar">
+          <h2>${topicName} – Subjects</h2>
+        </div>
+      `;
+
+      data.forEach(subject => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerText = subject.name;
+        div.onclick = () => loadResources(subject.id, subject.name);
+        content.appendChild(div);
+      });
+    }
+
+    /***********************************************************
+     * 5. RESOURCES (LEVEL 3 – JOURNALS / BOOKS)
+     ***********************************************************/
+    async function loadResources(subjectId, subjectName) {
+      const { data, error } = await supabase
+        .from("resources")
+        .select("*")
+        .eq("subject_id", subjectId)
+        .order("title");
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const content = document.getElementById("content");
+      content.innerHTML = `
+        <div class="topbar">
+          <h2>${subjectName} – Free Journals / Books</h2>
+        </div>
+      `;
+
+      data.forEach(res => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<strong>${res.title}</strong>`;
+        div.onclick = () => window.open(res.url, "_blank");
+        content.appendChild(div);
+      });
+    }
+
+    /***********************************************************
+     * 6. INIT – CHECK SESSION
+     ***********************************************************/
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        loadPortal();
+      } else {
+        showLogin();
+      }
+    });
+  </script>
+</body>
