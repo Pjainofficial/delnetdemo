@@ -1,276 +1,627 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Library Knowledge Portal (DELNET-style Demo)</title>
-  <!-- Supabase JS CDN -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digital Knowledge Library</title>
 
+    <!-- SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f6f8;
-    }
-    .login {
-      display: flex;
-      height: 100vh;
-      align-items: center;
-      justify-content: center;
-    }
-    .card {
-      background: #ffffff;
-      padding: 24px;
-      width: 340px;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .card h2 { margin-top: 0; }
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 12px;
-      font-size: 14px;
-    }
-    button {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    button.secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
-    .layout {
-      display: flex;
-      height: 100vh;
-    }
-    .sidebar {
-      width: 260px;
-      background: #ffffff;
-      border-right: 1px solid #e5e7eb;
-      padding: 16px;
-      overflow-y: auto;
-    }
-    .sidebar h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-    }
-    .topic {
-      padding: 8px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-bottom: 6px;
-    }
-    .topic:hover {
-      background: #f1f5f9;
-    }
-    .content {
-      flex: 1;
-      padding: 24px;
-      overflow-y: auto;
-    }
-    .item {
-      background: #ffffff;
-      padding: 12px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      border: 1px solid #e5e7eb;
-    }
-    .item:hover {
-      background: #f9fafb;
-    }
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .muted { color: #6b7280; }
-  </style>
-</head>
-<body>
-  <div id="app"></div>
-  <script>
-    /***********************************************************
-     * 1. CONFIGURE SUPABASE (PASTE YOUR OWN VALUES IN VS CODE)
-     ***********************************************************/
-    const SUPABASE_URL = "https://jkdlpfuiwmfeigzynmzg.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprZGxwZnVpd21mZWlnenlubXpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NzY4NDksImV4cCI6MjA5NDE1Mjg0OX0.5Yd7CaDPuurtFI8KIbxnswJ6Zf2KiV1w33wBTVUECl4";
+    <!-- GOOGLE FONT -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-    // const supabase = window.supabase.createClient(
-    //   SUPABASE_URL,
-    //   SUPABASE_ANON_KEY
-    // );
-
-    
-const supabase = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
-
-
-
-    const app = document.getElementById("app");
-
-
-    /***********************************************************
-     * 2. LOGIN UI
-     ***********************************************************/
-    function showLogin() {
-      app.innerHTML = `
-        <div class="login">
-          <div class="card">
-            <h2>Library Portal Login</h2>
-            <p class="muted">Access for registered users</p>
-            <input id="email" type="email" placeholder="Email" />
-            <input id="password" type="password" placeholder="Password" />
-            <button onclick="login()">Login</button>
-          </div>
-        </div>
-      `;
-    }
-    async function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      if (error) {
-        alert(error.message);
-      } else {
-        loadPortal();
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }
 
-    /***********************************************************
-     * 3. MAIN PORTAL LAYOUT
-     ***********************************************************/
-    async function loadPortal() {
-      app.innerHTML = `
-        <div class="layout">
-          <div class="sidebar">
-            <h3>Topics</h3>
-            <div id="topics"></div>
-            <hr />
-            <button class="secondary" onclick="logout()">Logout</button>
+      body {
+        font-family: "Poppins", sans-serif;
+        background: #f3f7fb;
+        overflow: hidden;
+      }
+
+      /********************************
+      LOGIN PAGE
+    ********************************/
+
+      .login {
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        background: linear-gradient(
+            rgba(15, 23, 42, 0.85),
+            rgba(15, 23, 42, 0.85)
+          ),
+          url("https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=1600&auto=format&fit=crop");
+
+        background-size: cover;
+        background-position: center;
+      }
+
+      .card {
+        width: 390px;
+
+        background: rgba(255, 255, 255, 0.1);
+
+        backdrop-filter: blur(18px);
+
+        border: 1px solid rgba(255, 255, 255, 0.15);
+
+        border-radius: 24px;
+
+        padding: 35px;
+
+        color: white;
+
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+      }
+
+      .logo {
+        font-size: 40px;
+        margin-bottom: 10px;
+      }
+
+      .card h2 {
+        font-size: 32px;
+        margin-bottom: 10px;
+      }
+
+      .muted {
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 20px;
+        line-height: 1.5;
+      }
+
+      input {
+        width: 100%;
+        padding: 15px;
+        margin-top: 15px;
+
+        border: none;
+        border-radius: 14px;
+
+        background: rgba(255, 255, 255, 0.15);
+
+        color: white;
+        font-size: 15px;
+        outline: none;
+      }
+
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      button {
+        width: 100%;
+        padding: 15px;
+        margin-top: 20px;
+
+        border: none;
+        border-radius: 14px;
+
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+
+        color: white;
+
+        font-size: 15px;
+        font-weight: 600;
+
+        cursor: pointer;
+
+        transition: 0.3s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+      }
+
+      button.secondary {
+        background: #e5e7eb;
+        color: #111827;
+      }
+
+      /********************************
+      PORTAL LAYOUT
+    ********************************/
+
+      .layout {
+        display: flex;
+        height: 100vh;
+      }
+
+      /********************************
+      SIDEBAR
+    ********************************/
+
+      .sidebar {
+        width: 300px;
+
+        background: linear-gradient(180deg, #0f172a, #1e293b);
+
+        color: white;
+
+        padding: 25px;
+
+        overflow-y: auto;
+
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+      }
+
+      .sidebar-title {
+        margin-bottom: 30px;
+      }
+
+      .sidebar-title h2 {
+        font-size: 28px;
+        margin-bottom: 6px;
+      }
+
+      .sidebar-title p {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 14px;
+      }
+
+      .topic {
+        padding: 15px;
+        margin-bottom: 12px;
+
+        border-radius: 16px;
+
+        background: rgba(255, 255, 255, 0.05);
+
+        border: 1px solid rgba(255, 255, 255, 0.08);
+
+        cursor: pointer;
+
+        transition: 0.25s;
+      }
+
+      .topic:hover {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+
+        transform: translateX(5px);
+      }
+
+      /********************************
+      CONTENT
+    ********************************/
+
+      .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 35px;
+        background: #f3f7fb;
+      }
+
+      .hero {
+        padding: 60px;
+
+        border-radius: 30px;
+
+        color: white;
+
+        margin-bottom: 30px;
+
+        background: linear-gradient(
+            rgba(15, 23, 42, 0.72),
+            rgba(15, 23, 42, 0.72)
+          ),
+          url("https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1600&auto=format&fit=crop");
+
+        background-size: cover;
+        background-position: center;
+
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+      }
+
+      .hero h1 {
+        font-size: 46px;
+        margin-bottom: 14px;
+      }
+
+      .hero p {
+        font-size: 18px;
+        opacity: 0.9;
+        max-width: 650px;
+        line-height: 1.7;
+      }
+
+      /********************************
+      GRID CARDS
+    ********************************/
+
+      .grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+
+        gap: 22px;
+      }
+
+      .stat-card {
+        background: white;
+
+        padding: 28px;
+
+        border-radius: 24px;
+
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+      }
+
+      .stat-card h3 {
+        font-size: 40px;
+        color: #2563eb;
+        margin-bottom: 10px;
+      }
+
+      .stat-card p {
+        color: #64748b;
+        font-size: 15px;
+      }
+
+      /********************************
+      ITEMS
+    ********************************/
+
+      .topbar {
+        margin-bottom: 25px;
+      }
+
+      .topbar h2 {
+        font-size: 34px;
+        color: #0f172a;
+      }
+
+      .item {
+        background: white;
+
+        padding: 22px;
+
+        border-radius: 20px;
+
+        margin-bottom: 18px;
+
+        border: 1px solid #e2e8f0;
+
+        cursor: pointer;
+
+        transition: 0.25s;
+
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+      }
+
+      .item:hover {
+        transform: translateY(-4px);
+
+        border-color: #2563eb;
+
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+      }
+
+      .item strong {
+        font-size: 18px;
+        color: #0f172a;
+      }
+
+      /********************************
+      SCROLLBAR
+    ********************************/
+
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 30px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script>
+      /********************************
+    SUPABASE CONFIG
+  ********************************/
+
+      //   const SUPABASE_URL = "YOUR_SUPABASE_URL";
+
+      //   const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+      const SUPABASE_URL = "https://jkdlpfuiwmfeigzynmzg.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprZGxwZnVpd21mZWlnenlubXpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NzY4NDksImV4cCI6MjA5NDE1Mjg0OX0.5Yd7CaDPuurtFI8KIbxnswJ6Zf2KiV1w33wBTVUECl4";
+
+      const supabaseClient = supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+
+      const app = document.getElementById("app");
+
+      /********************************
+    LOGIN PAGE
+  ********************************/
+
+      function showLogin() {
+        app.innerHTML = `
+      <div class="login">
+
+        <div class="card">
+
+          <div class="logo">📚</div>
+
+          <h2>Knowledge Portal</h2>
+
+          <p class="muted">
+            Access academic journals, books,
+            research papers and digital resources.
+          </p>
+
+          <input
+            id="email"
+            type="email"
+            placeholder="Enter email"
+          />
+
+          <input
+            id="password"
+            type="password"
+            placeholder="Enter password"
+          />
+
+          <button onclick="login()">
+            Login to Portal
+          </button>
+
+        </div>
+
+      </div>
+    `;
+      }
+
+      /********************************
+    LOGIN
+  ********************************/
+
+      async function login() {
+        const email = document.getElementById("email").value;
+
+        const password = document.getElementById("password").value;
+
+        const { error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          alert(error.message);
+        } else {
+          loadPortal();
+        }
+      }
+
+      /********************************
+    LOAD PORTAL
+  ********************************/
+
+      async function loadPortal() {
+        app.innerHTML = `
+      <div class="layout">
+
+        <div class="sidebar">
+
+          <div class="sidebar-title">
+            <h2>DELNET</h2>
+
+            <p>
+              Digital Knowledge Network
+            </p>
           </div>
-          <div class="content">
-            <div id="content">
-              <h2>Select a topic from the left</h2>
-              <p class="muted">DELNET-style hierarchical navigation</p>
+
+          <div id="topics"></div>
+
+          <button
+            class="secondary"
+            onclick="logout()"
+          >
+            Logout
+          </button>
+
+        </div>
+
+        <div class="content">
+
+          <div id="content">
+
+            <div class="hero">
+
+              <h1>
+                Digital Knowledge Library
+              </h1>
+
+              <p>
+                Discover journals, books,
+                research databases and academic
+                resources across multiple subjects.
+              </p>
+
             </div>
+
+            <div class="grid">
+
+              <div class="stat-card">
+                <h3>25K+</h3>
+                <p>Research Resources</p>
+              </div>
+
+              <div class="stat-card">
+                <h3>350+</h3>
+                <p>Subjects Covered</p>
+              </div>
+
+              <div class="stat-card">
+                <h3>120+</h3>
+                <p>Partner Libraries</p>
+              </div>
+
+            </div>
+
           </div>
+
         </div>
+
+      </div>
+    `;
+
+        const { data, error } = await supabaseClient
+          .from("topics")
+          .select("*")
+          .order("name");
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        const topicsDiv = document.getElementById("topics");
+
+        topicsDiv.innerHTML = "";
+
+        data.forEach((topic) => {
+          const div = document.createElement("div");
+
+          div.className = "topic";
+
+          div.innerHTML = `
+        📘 ${topic.name}
       `;
 
+          div.onclick = () => loadSubjects(topic.id, topic.name);
 
-      const { data, error } = await supabase
-        .from("topics")
-        .select("*")
-        .order("name");
-
-      if (error) {
-        alert(error.message);
-        return;
+          topicsDiv.appendChild(div);
+        });
       }
 
-      const topicsDiv = document.getElementById("topics");
-      topicsDiv.innerHTML = "";
+      /********************************
+    LOGOUT
+  ********************************/
 
-      data.forEach(topic => {
-        const div = document.createElement("div");
-        div.className = "topic";
-        div.innerText = topic.name;
-        div.onclick = () => loadSubjects(topic.id, topic.name);
-        topicsDiv.appendChild(div);
-      });
-    }
+      async function logout() {
+        await supabaseClient.auth.signOut();
 
-    async function logout() {
-      await supabase.auth.signOut();
-      showLogin();
-    }
-
-    /***********************************************************
-     * 4. SUBJECTS (LEVEL 2)
-     ***********************************************************/
-    async function loadSubjects(topicId, topicName) {
-      const { data, error } = await supabase
-        .from("subjects")
-        .select("*")
-        .eq("topic_id", topicId)
-        .order("name");
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      const content = document.getElementById("content");
-      content.innerHTML = `
-        <div class="topbar">
-          <h2>${topicName} – Subjects</h2>
-        </div>
-      `;
-
-      data.forEach(subject => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerText = subject.name;
-        div.onclick = () => loadResources(subject.id, subject.name);
-        content.appendChild(div);
-      });
-    }
-
-    /***********************************************************
-     * 5. RESOURCES (LEVEL 3 – JOURNALS / BOOKS)
-     ***********************************************************/
-    async function loadResources(subjectId, subjectName) {
-      const { data, error } = await supabase
-        .from("resources")
-        .select("*")
-        .eq("subject_id", subjectId)
-        .order("title");
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      const content = document.getElementById("content");
-      content.innerHTML = `
-        <div class="topbar">
-          <h2>${subjectName} – Free Journals / Books</h2>
-        </div>
-      `;
-
-      data.forEach(res => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<strong>${res.title}</strong>`;
-        div.onclick = () => window.open(res.url, "_blank");
-        content.appendChild(div);
-      });
-    }
-
-    /***********************************************************
-     * 6. INIT – CHECK SESSION
-     ***********************************************************/
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        loadPortal();
-      } else {
         showLogin();
       }
-    });
-  </script>
-</body>
+
+      /********************************
+    LOAD SUBJECTS
+  ********************************/
+
+      async function loadSubjects(topicId, topicName) {
+        const { data, error } = await supabaseClient
+          .from("subjects")
+          .select("*")
+          .eq("topic_id", topicId)
+          .order("name");
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        const content = document.getElementById("content");
+
+        content.innerHTML = `
+      <div class="topbar">
+        <h2>${topicName}</h2>
+      </div>
+    `;
+
+        data.forEach((subject) => {
+          const div = document.createElement("div");
+
+          div.className = "item";
+
+          div.innerHTML = `
+        <strong>
+          📖 ${subject.name}
+        </strong>
+      `;
+
+          div.onclick = () => loadResources(subject.id, subject.name);
+
+          content.appendChild(div);
+        });
+      }
+
+      /********************************
+    LOAD RESOURCES
+  ********************************/
+
+      async function loadResources(subjectId, subjectName) {
+        const { data, error } = await supabaseClient
+          .from("resources")
+          .select("*")
+          .eq("subject_id", subjectId)
+          .order("title");
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        const content = document.getElementById("content");
+
+        content.innerHTML = `
+      <div class="topbar">
+        <h2>${subjectName}</h2>
+      </div>
+    `;
+
+        data.forEach((resource) => {
+          const div = document.createElement("div");
+
+          div.className = "item";
+
+          div.innerHTML = `
+        <strong>
+          📚 ${resource.title}
+        </strong>
+      `;
+
+          div.onclick = () => window.open(resource.url, "_blank");
+
+          content.appendChild(div);
+        });
+      }
+
+      /********************************
+    SESSION CHECK
+  ********************************/
+
+      supabaseClient.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          loadPortal();
+        } else {
+          showLogin();
+        }
+      });
+    </script>
+  </body>
+</html>
